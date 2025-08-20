@@ -54,14 +54,12 @@ Prefer a browser? Import the repo into **Overleaf** and press *Re-compile*.
 .
 ├── docs/
 │   └── main.tex         # LaTeX source for the exercises PDF
-├── sql/
-│   ├── 1-CustomerNamesAndCategories.sql
-│   ├── 2-RetrieveFullNamesAndEmailOfEmployee.sql
-│   ├── ...
-│   └── 20-ListAllStockItemsWithTheirGroups.sql
 ├── .github/workflows/
 │   └── ci.yml
-└── README.md
+├── 1-CustomerNamesAndCategories.sql
+├── 2-RetrieveFullNamesAndEmailOfEmployee.sql
+├── ...
+└── 20-ListAllStockItemsWithTheirGroups.sql
 ```
 
 ---
