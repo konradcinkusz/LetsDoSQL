@@ -1,0 +1,486 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fontawesome5}
+
+\geometry{margin=1in}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{orange},
+  breaklines=true,
+  showstringspaces=false
+}
+
+\title{Wide World Importers SQL Exercises \\ \large Documentation and Solutions}
+\author{ {\large by \href{https://github.com/konradcinkusz}{\faGithub\;dev\_insight}}}
+
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section*{Introduction}
+This document collects twenty SQL exercises based on the \textbf{Wide World Importers (WWI)} sample database.
+WWI models a fictitious wholesale import business and contains tables such as \texttt{Sales.Customers}, \texttt{Sales.Orders},
+\texttt{Warehouse.StockItems}, \texttt{Purchasing.Suppliers}, and \texttt{Application.People}.
+
+The goal of these exercises is to practice real-world SQL queries:
+\begin{itemize}
+    \item Joins across tables
+    \item Aggregation with \texttt{GROUP BY}
+    \item Filtering with \texttt{WHERE}/\texttt{HAVING}
+    \item Subqueries
+    \item Window functions (\texttt{RANK}, \texttt{ROW\_NUMBER})
+    \item Set operations such as \texttt{UNION} and \texttt{INTERSECT}
+  \end{itemize}
+
+  \section*{Prerequisites}
+  To try these queries you need access to the Wide World Importers sample database in a SQL Server environment:
+  \begin{itemize}
+      \item Install SQL Server (Developer or Express) and SQL Server Management Studio, then restore the WWI backup.
+      \item Run Microsoft's SQL Server Docker image and restore the backup inside the container.
+      \item Use Azure SQL Database and import the WWI BACPAC.
+  \end{itemize}
+  \noindent Sample backups and BACPAC files are available from Microsoft:\
+  \href{https://learn.microsoft.com/en-us/sql/samples/wide-world-importers-oltp-install-configure}{Install and configure Wide World Importers}.
+
+  \section{Exercise 1 (Beginner): Customer Names and Categories}
+\textbf{Task:} List each customer’s name along with the name of their customer category.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Sales.Customers} contains \texttt{CustomerName} and a foreign key \texttt{CustomerCategoryID}.
+  \item \texttt{Sales.CustomerCategories} defines \texttt{CustomerCategoryName}.
+  \item Join the tables on \texttt{CustomerCategoryID}. Use a \texttt{LEFT JOIN} so customers without a category still appear.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT c.CustomerName, cc.CustomerCategoryName
+FROM Sales.Customers AS c
+LEFT JOIN Sales.CustomerCategories AS cc
+  ON c.CustomerCategoryID = cc.CustomerCategoryID;
+\end{lstlisting}
+
+\section{Exercise 2 (Beginner): Salespeople in the People Table}
+\textbf{Task:} Retrieve the full names and email addresses of all people who are employees and are designated as salespeople.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item The table \texttt{Application.People} stores \texttt{FullName}, \texttt{EmailAddress}, \texttt{IsEmployee}, and \texttt{IsSalesperson}.
+  \item Filter for rows where both \texttt{IsEmployee} = 1 and \texttt{IsSalesperson} = 1.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT FullName, EmailAddress
+FROM Application.People
+WHERE IsEmployee = 1
+  AND IsSalesperson = 1;
+\end{lstlisting}
+
+\section{Exercise 3 (Beginner): Supplier Names and Categories}
+\textbf{Task:} List each supplier’s name along with the name of the supplier category they belong to.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Purchasing.Suppliers} provides \texttt{SupplierName} and a foreign key \texttt{SupplierCategoryID}.
+  \item \texttt{Purchasing.SupplierCategories} contains \texttt{SupplierCategoryName}.
+  \item Join the tables on \texttt{SupplierCategoryID} to pair suppliers with category names.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT s.SupplierName, sc.SupplierCategoryName
+FROM Purchasing.Suppliers AS s
+LEFT JOIN Purchasing.SupplierCategories AS sc
+  ON s.SupplierCategoryID = sc.SupplierCategoryID;
+\end{lstlisting}
+
+\section{Exercise 4 (Beginner): Order Count per Customer}
+\textbf{Task:} Find the total number of orders placed by each customer. Return the customer name and the count of orders.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Sales.Orders} records \texttt{OrderID} and \texttt{CustomerID}.
+  \item Join \texttt{Sales.Orders} to \texttt{Sales.Customers} to retrieve \texttt{CustomerName}.
+  \item Group by \texttt{CustomerName} and count \texttt{OrderID} for each customer.
+  \item Optionally order the result by the count to highlight the most active customers.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT c.CustomerName,
+       COUNT(o.OrderID) AS TotalOrders
+FROM Sales.Customers AS c
+LEFT JOIN Sales.Orders AS o
+  ON c.CustomerID = o.CustomerID
+GROUP BY c.CustomerName
+ORDER BY TotalOrders DESC;
+\end{lstlisting}
+
+\section{Exercise 5 (Beginner): Customers with More Than 5 Orders}
+\textbf{Task:} List the names of customers who have placed more than five orders.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Join \texttt{Sales.Orders} to \texttt{Sales.Customers} on \texttt{CustomerID}.
+  \item Group by \texttt{CustomerName} to count orders per customer.
+  \item Use \texttt{HAVING COUNT(OrderID) > 5} to keep only customers with more than five orders.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT c.CustomerName,
+       COUNT(o.OrderID) AS OrderCount
+FROM Sales.Customers AS c
+JOIN Sales.Orders AS o
+  ON c.CustomerID = o.CustomerID
+GROUP BY c.CustomerName
+HAVING COUNT(o.OrderID) > 5;
+\end{lstlisting}
+
+\section{Exercise 6 (Intermediate): Customers Ordering Large Quantities}
+\textbf{Task:} Find the names of customers who have ordered more than 100 units of any single stock item in an order line.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Link \texttt{Sales.Customers} to \texttt{Sales.Orders} and then to \texttt{Sales.OrderLines}.
+  \item \texttt{Sales.OrderLines} contains the \texttt{Quantity} of each item in an order.
+  \item Filter for \texttt{Quantity > 100} to identify large purchases.
+  \item Select distinct customer names so each qualifying customer appears once.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT DISTINCT c.CustomerName
+FROM Sales.Customers AS c
+JOIN Sales.Orders AS o
+  ON c.CustomerID = o.CustomerID
+JOIN Sales.OrderLines AS ol
+  ON o.OrderID = ol.OrderID
+WHERE ol.Quantity > 100;
+\end{lstlisting}
+
+\section{Exercise 7 (Intermediate): Top 3 Best-Selling Stock Items by Quantity}
+\textbf{Task:} Using a window function, list the top three stock items that have the highest total quantity ordered across all sales. Include the total quantity and a rank.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Aggregate \texttt{Sales.OrderLines} by \texttt{StockItemID} and sum \texttt{Quantity}.
+  \item Apply \texttt{RANK() OVER (ORDER BY SUM(Quantity) DESC)} to assign ranks based on quantity sold.
+  \item Join to \texttt{Warehouse.StockItems} to obtain \texttt{StockItemName}.
+  \item Filter for rows where the rank is less than or equal to three.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+WITH ItemTotals AS (
+  SELECT 
+    ol.StockItemID,
+    SUM(ol.Quantity) AS TotalQty,
+    RANK() OVER (ORDER BY SUM(ol.Quantity) DESC) AS QtyRank
+  FROM Sales.OrderLines AS ol
+  GROUP BY ol.StockItemID
+)
+SELECT 
+  si.StockItemName,
+  it.TotalQty,
+  it.QtyRank
+FROM ItemTotals AS it
+JOIN Warehouse.StockItems AS si
+  ON it.StockItemID = si.StockItemID
+WHERE it.QtyRank <= 3
+ORDER BY it.QtyRank;
+\end{lstlisting}
+
+\section{Exercise 8 (Intermediate): Customers with No Orders}
+\textbf{Task:} List the names of customers who have never placed an order.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Retrieve all customers from \texttt{Sales.Customers}.
+  \item Gather all \texttt{CustomerID} values appearing in \texttt{Sales.Orders}.
+  \item Select customers whose ID does not appear in the orders list using \texttt{NOT IN}.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT CustomerName
+FROM Sales.Customers
+WHERE CustomerID NOT IN (
+  SELECT CustomerID FROM Sales.Orders
+);
+\end{lstlisting}
+
+\section{Exercise 9 (Intermediate): Five Most Recent Orders}
+\textbf{Task:} Retrieve the five most recent sales orders and show the order ID, customer ID, and order date.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Use \texttt{Sales.Orders} which stores \texttt{OrderID}, \texttt{CustomerID}, and \texttt{OrderDate}.
+  \item Sort the rows by \texttt{OrderDate} in descending order so the newest orders appear first.
+  \item Take only the first five rows.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT OrderID, CustomerID, OrderDate
+FROM Sales.Orders
+ORDER BY OrderDate DESC
+FETCH FIRST 5 ROWS ONLY;
+\end{lstlisting}
+
+\section{Exercise 10 (Intermediate): Total Invoiced Amount per Customer in 2013}
+\textbf{Task:} Calculate the total extended price of all invoices for each customer for invoices dated in 2013. Return the customer name and total amount.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Sales.InvoiceLines} includes \texttt{InvoiceID} and \texttt{ExtendedPrice}.
+  \item Join to \texttt{Sales.Invoices} to access \texttt{CustomerID} and \texttt{InvoiceDate}.
+  \item Join to \texttt{Sales.Customers} for the \texttt{CustomerName}.
+  \item Restrict \texttt{InvoiceDate} to the year 2013.
+  \item Group by \texttt{CustomerName} and sum \texttt{ExtendedPrice}.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT 
+  c.CustomerName,
+  SUM(il.ExtendedPrice) AS TotalAmount2013
+FROM Sales.InvoiceLines AS il
+JOIN Sales.Invoices AS i
+  ON il.InvoiceID = i.InvoiceID
+JOIN Sales.Customers AS c
+  ON i.CustomerID = c.CustomerID
+WHERE i.InvoiceDate >= '2013-01-01'
+  AND i.InvoiceDate < '2014-01-01'
+GROUP BY c.CustomerName
+ORDER BY TotalAmount2013 DESC;
+\end{lstlisting}
+
+\section{Exercise 11 (Beginner): Customers and Buying Groups}
+\textbf{Task:} List each customer with the name of the buying group they belong to, if any.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Sales.Customers} holds \texttt{CustomerName} and a nullable \texttt{BuyingGroupID}.
+  \item \texttt{Sales.BuyingGroups} stores \texttt{BuyingGroupName}.
+  \item Use a \texttt{LEFT JOIN} on \texttt{BuyingGroupID} so customers without a buying group still appear.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT C.CustomerName, B.BuyingGroupName
+FROM Sales.Customers AS C
+LEFT JOIN Sales.BuyingGroups AS B
+  ON C.BuyingGroupID = B.BuyingGroupID;
+\end{lstlisting}
+
+\section{Exercise 12 (Beginner): Orders Placed in 2013}
+\textbf{Task:} Show every order ID and order date from 2013 together with the customer name.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item The table \texttt{Sales.Orders} contains \texttt{OrderID}, \texttt{OrderDate}, and \texttt{CustomerID}.
+  \item Join to \texttt{Sales.Customers} to get \texttt{CustomerName}.
+  \item Filter orders where the year of \texttt{OrderDate} equals 2013.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT O.OrderID, O.OrderDate, C.CustomerName
+FROM Sales.Orders AS O
+JOIN Sales.Customers AS C
+  ON O.CustomerID = C.CustomerID
+WHERE YEAR(O.OrderDate) = 2013;
+\end{lstlisting}
+
+\section{Exercise 13 (Intermediate): Orders Per Customer Over Five}
+\textbf{Task:} Determine how many orders each customer has placed and return only those with more than five orders.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Join \texttt{Sales.Orders} to \texttt{Sales.Customers}.
+  \item Group by \texttt{CustomerName} to count orders per customer.
+  \item Use \texttt{HAVING COUNT(*) > 5} to filter after grouping.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT C.CustomerName, COUNT(*) AS OrderCount
+FROM Sales.Orders AS O
+JOIN Sales.Customers AS C
+  ON O.CustomerID = C.CustomerID
+GROUP BY C.CustomerName
+HAVING COUNT(*) > 5;
+\end{lstlisting}
+
+\section{Exercise 14 (Intermediate): Customer Categories with More Than 50 Customers}
+\textbf{Task:} List each customer category and the number of customers in it, but only include categories with more than 50 customers.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Sales.Customers} includes \texttt{CustomerCategoryID}.
+  \item Join to \texttt{Sales.CustomerCategories} for \texttt{CustomerCategoryName}.
+  \item Group by \texttt{CustomerCategoryName} and count customers in each group.
+  \item Filter with \texttt{HAVING COUNT(*) > 50}.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT CC.CustomerCategoryName,
+       COUNT(*) AS NumCustomers
+FROM Sales.Customers AS C
+JOIN Sales.CustomerCategories AS CC
+  ON C.CustomerCategoryID = CC.CustomerCategoryID
+GROUP BY CC.CustomerCategoryName
+HAVING COUNT(*) > 50;
+\end{lstlisting}
+
+\section{Exercise 15 (Advanced): Rank Stock Items by Total Revenue}
+\textbf{Task:} Rank stock items by total sales revenue and show the top three items with their revenue.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Sales.InvoiceLines} records \texttt{Quantity} and \texttt{UnitPrice} for each sold item.
+  \item Join to \texttt{Warehouse.StockItems} to obtain item names.
+  \item Group by stock item and compute \texttt{SUM(Quantity * UnitPrice)} as \texttt{TotalRevenue}.
+  \item Use \texttt{RANK() OVER (ORDER BY TotalRevenue DESC)} to assign revenue ranks.
+  \item Select only rows where the rank is less than or equal to three.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+WITH RankedItems AS (
+    SELECT SI.StockItemName,
+           RANK() OVER (ORDER BY SUM(IL.Quantity * IL.UnitPrice) DESC) AS RevRank,
+           SUM(IL.Quantity * IL.UnitPrice) AS TotalRevenue
+    FROM Sales.InvoiceLines AS IL
+    JOIN Warehouse.StockItems AS SI
+      ON IL.StockItemID = SI.StockItemID
+    GROUP BY SI.StockItemName
+)
+SELECT StockItemName, TotalRevenue
+FROM RankedItems
+WHERE RevRank <= 3;
+\end{lstlisting}
+
+\section{Exercise 16 (Advanced): Most Recent Order per Customer}
+\textbf{Task:} For each customer, find the date of their most recent order.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Query \texttt{Sales.Customers} as the outer query.
+  \item Use a correlated subquery on \texttt{Sales.Orders} to return \texttt{MAX(OrderDate)} for each customer.
+  \item The subquery references the outer query’s \texttt{CustomerID}.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT C.CustomerName,
+       (SELECT MAX(O.OrderDate)
+        FROM Sales.Orders AS O
+        WHERE O.CustomerID = C.CustomerID
+       ) AS LastOrderDate
+FROM Sales.Customers AS C;
+\end{lstlisting}
+
+\section{Exercise 17 (Advanced): Duplicate Email Addresses}
+\textbf{Task:} Identify any duplicate email addresses in the \texttt{Application.People} table.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Group \texttt{Application.People} by \texttt{EmailAddress} and keep those with a count greater than one.
+  \item Join this list of duplicate emails back to \texttt{Application.People} to display the affected rows.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT P.PersonID, P.FullName, P.EmailAddress
+FROM Application.People AS P
+JOIN (
+    SELECT EmailAddress
+    FROM Application.People
+    GROUP BY EmailAddress
+    HAVING COUNT(*) > 1
+) AS dup
+  ON P.EmailAddress = dup.EmailAddress;
+\end{lstlisting}
+
+\section{Exercise 18 (Advanced): All Cities Used by Customers or Suppliers}
+\textbf{Task:} Retrieve all distinct city names that appear as delivery cities for either customers or suppliers.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Select \texttt{DeliveryCityID} from \texttt{Sales.Customers}.
+  \item Select \texttt{DeliveryCityID} from \texttt{Purchasing.Suppliers}.
+  \item Combine the city IDs using \texttt{UNION}.
+  \item Return the corresponding \texttt{CityName} values from \texttt{Application.Cities}.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT DISTINCT C.CityName
+FROM Application.Cities AS C
+WHERE C.CityID IN (
+    SELECT DeliveryCityID FROM Sales.Customers
+    UNION
+    SELECT DeliveryCityID FROM Purchasing.Suppliers
+);
+\end{lstlisting}
+
+\section{Exercise 19 (Advanced): Cities Common to Customers and Suppliers}
+\textbf{Task:} List city names that appear in both customer and supplier delivery addresses.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item Select \texttt{DeliveryCityID} from \texttt{Sales.Customers}.
+  \item Select \texttt{DeliveryCityID} from \texttt{Purchasing.Suppliers}.
+  \item Use \texttt{INTERSECT} to find city IDs present in both sets.
+  \item Retrieve the \texttt{CityName} for those IDs from \texttt{Application.Cities}.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT CityName
+FROM Application.Cities
+WHERE CityID IN (
+    SELECT DeliveryCityID FROM Sales.Customers
+    INTERSECT
+    SELECT DeliveryCityID FROM Purchasing.Suppliers
+);
+\end{lstlisting}
+
+\section{Exercise 20 (Advanced): Stock Items and Groups}
+\textbf{Task:} Retrieve every stock item along with its stock group name. Include items with no group and groups with no items.
+
+\textbf{Explanation:}
+\begin{enumerate}
+  \item \texttt{Warehouse.StockItems} lists the available items.
+  \item \texttt{Warehouse.StockItemStockGroups} links items to groups.
+  \item \texttt{Warehouse.StockGroups} defines group names.
+  \item A \texttt{FULL OUTER JOIN} between items and the link table keeps items without groups.
+  \item Another \texttt{FULL OUTER JOIN} to \texttt{Warehouse.StockGroups} keeps groups without items.
+\end{enumerate}
+
+\textbf{SQL:}
+\begin{lstlisting}[language=SQL]
+SELECT SI.StockItemName, SG.StockGroupName
+FROM Warehouse.StockItems AS SI
+FULL OUTER JOIN Warehouse.StockItemStockGroups AS SIG
+  ON SI.StockItemID = SIG.StockItemID
+FULL OUTER JOIN Warehouse.StockGroups AS SG
+  ON SIG.StockGroupID = SG.StockGroupID;
+\end{lstlisting}
+
+\end{document}
